@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>3D CITY RACER - Detailed City & Road Lines</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:ital,wght@0,400..900;1,400..900&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+    <!-- Three.js 3D WebGL Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        :root {
+            --sky-blue: #0088ff;
+            --neon-red: #ff0055;
+            --ap-saffron: #ff9933;
+            --neon-cyan: #00f3ff;
+            --neon-yellow: #ffe600;
+            --bg-color: #70c5ff;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: #ffffff;
+            font-family: 'Rajdhani', sans-serif;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #webgl-container {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* Top HUD */
+        .hud-top {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 92%;
+            max-width: 900px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .hud-card {
+            background: rgba(10, 25, 50, 0.85);
+            border: 1px solid rgba(0, 136, 255, 0.5);
+            backdrop-filter: blur(12px);
+            padding: 10px 22px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 0 20px rgba(0, 136, 255, 0.2);
+        }
+
+        .hud-label {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.7rem;
+            color: #8ac0e5;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .hud-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.6rem;
+            font-weight: 900;
+            color: var(--sky-blue);
+            text-shadow: 0 0 12px rgba(0, 136, 255, 0.8);
+        }
+
+        .hud-value.saffron { color: var(--ap-saffron); text-shadow: 0 0 12px rgba(255,153,51,0.8); }
+        .hud-value.yellow { color: var(--neon-yellow); text-shadow: 0 0 12px rgba(255,230,0,0.8); }
+        .hud-value.cyan { color: var(--neon-cyan); text-shadow: 0 0 12px rgba(0,243,255,0.8); }
+
+        /* SPEEDOMETER CLUSTER */
+        .speedometer-cluster {
+            position: absolute;
+            bottom: 25px;
+            right: 25px;
+            width: 150px;
+            height: 150px;
+            background: rgba(8, 20, 45, 0.9);
+            border: 3px solid var(--sky-blue);
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 12;
+            box-shadow: 0 0 30px rgba(0, 136, 255, 0.4);
+            pointer-events: none;
+        }
+
+        .speed-val {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: var(--neon-yellow);
+            text-shadow: 0 0 15px rgba(255, 230, 0, 0.8);
+        }
+
+        .speed-limit-badge {
+            font-size: 0.65rem;
+            color: var(--neon-cyan);
+            letter-spacing: 1px;
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        .auto-mode-badge {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 900;
+            color: var(--ap-saffron);
+            background: rgba(255, 153, 51, 0.15);
+            padding: 2px 10px;
+            border-radius: 10px;
+            border: 1px solid var(--ap-saffron);
+            margin-top: 4px;
+        }
+
+        /* Overlay UI Screens */
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(6, 15, 35, 0.92);
+            backdrop-filter: blur(14px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 25;
+            text-align: center;
+            padding: 20px;
+            transition: opacity 0.3s ease;
+        }
+
+        .overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 3.4rem;
+            font-weight: 900;
+            font-style: italic;
+            background: linear-gradient(135deg, var(--sky-blue), var(--neon-yellow));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 35px rgba(0, 136, 255, 0.6);
+            letter-spacing: 4px;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: #b0d8f5;
+            margin-bottom: 30px;
+            letter-spacing: 2px;
+        }
+
+        .btn {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 900;
+            font-style: italic;
+            letter-spacing: 3px;
+            padding: 16px 48px;
+            color: #ffffff;
+            background: linear-gradient(90deg, var(--sky-blue), #00d5ff);
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 0 30px rgba(0, 136, 255, 0.8);
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 0 45px rgba(0, 136, 255, 1);
+            background: linear-gradient(90deg, #ffffff, var(--sky-blue));
+            color: #000;
+        }
+
+        .controls-box {
+            display: flex;
+            gap: 24px;
+            margin-top: 30px;
+            font-size: 0.9rem;
+            color: #8ac0e5;
+        }
+
+        .key-badge {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            padding: 4px 10px;
+            border-radius: 4px;
+            color: var(--neon-yellow);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="webgl-container"></div>
+
+    <!-- HUD Header -->
+    <div class="hud-top">
+        <div class="hud-card">
+            <span class="hud-label">Score</span>
+            <span class="hud-value" id="scoreText">000000</span>
+        </div>
+        <div class="hud-card">
+            <span class="hud-label">Traffic Cars</span>
+            <span class="hud-value saffron" id="carCountText">HIGH TRAFFIC 🚗</span>
+        </div>
+        <div class="hud-card">
+            <span class="hud-label">Sidewalk People</span>
+            <span class="hud-value cyan" id="peopleCountText">SIDEWALK 🚶</span>
+        </div>
+        <div class="hud-card">
+            <span class="hud-label">High Score</span>
+            <span class="hud-value yellow" id="highScoreText">000000</span>
+        </div>
+    </div>
+
+    <!-- Speedometer Cluster -->
+    <div class="speedometer-cluster">
+        <span class="speed-val" id="speedNum">0</span>
+        <span class="speed-limit-badge">MAX 25 KM/H</span>
+        <span class="auto-mode-badge">AUTOMATIC</span>
+    </div>
+
+    <!-- Start Overlay Screen -->
+    <div class="overlay" id="startOverlay">
+        <h1 class="title">DETAILED CITY 3D RACER</h1>
+        <p class="subtitle">DOTTED ROAD LINES, SIDEWALK PEOPLE & DOORS/WINDOWS</p>
+        <button class="btn" id="startBtn">START DRIVE 🏎️</button>
+        <div class="controls-box">
+            <span><span class="key-badge">W</span> FORWARD | <span class="key-badge">S</span> REVERSE</span>
+            <span><span class="key-badge">A</span> TURN LEFT | <span class="key-badge">D</span> TURN RIGHT</span>
+            <span><span class="key-badge">H</span> HONK HORN</span>
+        </div>
+    </div>
+
+    <script>
+        /* ==========================================================================
+           AUDIO SYNTHESIZER
+           ========================================================================== */
+        class SoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.engineOsc = null;
+                this.engineGain = null;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    
+                    this.engineOsc = this.ctx.createOscillator();
+                    this.engineGain = this.ctx.createGain();
+
+                    this.engineOsc.type = 'sawtooth';
+                    this.engineOsc.frequency.setValueAtTime(55, this.ctx.currentTime);
+                    this.engineGain.gain.setValueAtTime(0.04, this.ctx.currentTime);
+
+                    this.engineOsc.connect(this.engineGain);
+                    this.engineGain.connect(this.ctx.destination);
+                    this.engineOsc.start();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            updateEngineSound(speedRatio, isAccel) {
+                if (!this.ctx || !this.engineOsc) return;
+                try {
+                    let freq = 55 + speedRatio * 220;
+                    this.engineOsc.frequency.setTargetAtTime(freq, this.ctx.currentTime, 0.05);
+
+                    let volume = isAccel ? 0.10 : 0.03;
+                    this.engineGain.gain.setTargetAtTime(volume, this.ctx.currentTime, 0.05);
+                } catch(e) {}
+            }
+
+            playHorn() {
+                if (!this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(480, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.4);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.4);
+                } catch(e) {}
+            }
+        }
+
+        const sound = new SoundEngine();
+
+        /* ==========================================================================
+           THREE.JS 3D ENGINE SETUP (60 FPS OPTIMIZED)
+           ========================================================================== */
+        const container = document.getElementById('webgl-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x70c5ff); // Sunny Blue Sky
+        scene.fog = new THREE.FogExp2(0x70c5ff, 0.0035);
+
+        const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 800);
+        camera.position.set(0, 5, 12);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(1.0);
+        container.appendChild(renderer.domElement);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
+        scene.add(ambientLight);
+
+        const sunLight = new THREE.DirectionalLight(0xfffaed, 1.2);
+        sunLight.position.set(40, 70, 30);
+        scene.add(sunLight);
+
+        // Shared Reusable Geometries & Materials
+        const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+        const windowMat = new THREE.MeshBasicMaterial({ color: 0x88d4ff });
+        const doorMat = new THREE.MeshBasicMaterial({ color: 0x4a2c11 }); // Dark Wood Door
+        const trunkMat = new THREE.MeshLambertMaterial({ color: 0x5d4037 });
+        const leafMat = new THREE.MeshLambertMaterial({ color: 0x2e7d32 });
+        const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff }); // White Center Lines
+
+        /* ==========================================================================
+           3D SUPERCAR MODEL
+           ========================================================================== */
+        function createNewSupercar(colorHex = 0xff0044) {
+            const carGroup = new THREE.Group();
+
+            const bodyGeo = new THREE.BoxGeometry(2.5, 0.85, 5.2);
+            const bodyMat = new THREE.MeshPhongMaterial({ color: colorHex, specular: 0xffffff, shininess: 80 });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = 0.6;
+            carGroup.add(body);
+
+            const cabGeo = new THREE.BoxGeometry(2.0, 0.7, 2.5);
+            const cabMat = new THREE.MeshPhongMaterial({ color: 0x0a0a14, specular: 0x00f3ff });
+            const cab = new THREE.Mesh(cabGeo, cabMat);
+            cab.position.set(0, 1.3, -0.1);
+            carGroup.add(cab);
+
+            const spoiler = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.15, 0.5), new THREE.MeshBasicMaterial({ color: 0x111111 }));
+            spoiler.position.set(0, 1.45, 2.2);
+            carGroup.add(spoiler);
+
+            const wheelGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.5, 12);
+            wheelGeo.rotateZ(Math.PI / 2);
+            const wheelMat = new THREE.MeshPhongMaterial({ color: 0x111111 });
+
+            [[-1.35, 0.5, 1.5], [1.35, 0.5, 1.5], [-1.35, 0.5, -1.5], [1.35, 0.5, -1.5]].forEach(pos => {
+                const w = new THREE.Mesh(wheelGeo, wheelMat);
+                w.position.set(pos[0], pos[1], pos[2]);
+                carGroup.add(w);
+            });
+
+            return carGroup;
+        }
+
+        const playerCar = createNewSupercar(0xff0044);
+        playerCar.position.set(0, 0, 0);
+        scene.add(playerCar);
+
+        /* ==========================================================================
+           SIDEWALK PEDESTRIAN PEOPLE GENERATOR (HIGH DENSITY)
+           ========================================================================== */
+        let pedestrians = [];
+
+        function createPedestrian(x, z) {
+            const pGroup = new THREE.Group();
+
+            const shirtColors = [0x0066ff, 0xff0055, 0x00e676, 0xffea00, 0xff9933];
+            const shirtColor = shirtColors[Math.floor(Math.random() * shirtColors.length)];
+
+            // Head
+            const head = new THREE.Mesh(boxGeo, new THREE.MeshPhongMaterial({ color: 0xffcc99 }));
+            head.scale.set(0.4, 0.4, 0.4);
+            head.position.y = 1.6;
+            pGroup.add(head);
+
+            // Shirt
+            const torso = new THREE.Mesh(boxGeo, new THREE.MeshPhongMaterial({ color: shirtColor }));
+            torso.scale.set(0.6, 0.8, 0.35);
+            torso.position.y = 1.0;
+            pGroup.add(torso);
+
+            // Pants
+            const legs = new THREE.Mesh(boxGeo, new THREE.MeshPhongMaterial({ color: 0x333344 }));
+            legs.scale.set(0.5, 0.8, 0.35);
+            legs.position.y = 0.4;
+            pGroup.add(legs);
+
+            pGroup.position.set(x, 0, z);
+            pGroup.vz = (Math.random() - 0.5) * 0.08;
+            if (Math.abs(pGroup.vz) < 0.02) pGroup.vz = 0.04;
+
+            scene.add(pGroup);
+            pedestrians.push(pGroup);
+        }
+
+        /* ==========================================================================
+           3D BUILDINGS WITH WINDOWS & DOORS
+           ========================================================================== */
+        function spawnDetailedBuilding(x, z, width, height, depth, colorHex) {
+            const bGroup = new THREE.Group();
+
+            // Main Building Mass
+            const bMat = new THREE.MeshPhongMaterial({ color: colorHex });
+            const bMesh = new THREE.Mesh(boxGeo, bMat);
+            bMesh.scale.set(width, height, depth);
+            bMesh.position.y = height / 2;
+            bGroup.add(bMesh);
+
+            // Ground Floor Entrance Door
+            const door = new THREE.Mesh(boxGeo, doorMat);
+            door.scale.set(2.5, 3.8, 0.2);
+            door.position.set(0, 1.9, depth / 2 + 0.1);
+            bGroup.add(door);
+
+            // Windows Panes Grid
+            for (let hy = 6; hy < height - 2; hy += 4) {
+                for (let wx = -width / 3; wx <= width / 3; wx += width / 3) {
+                    const win = new THREE.Mesh(boxGeo, windowMat);
+                    win.scale.set(1.8, 2.0, 0.15);
+                    win.position.set(wx, hy, depth / 2 + 0.1);
+                    bGroup.add(win);
+                }
+            }
+
+            bGroup.position.set(x, 0, z);
+            scene.add(bGroup);
+        }
+
+        /* ==========================================================================
+           LUSH TREES STRICTLY ALONG SIDEWALKS (NEVER IN MIDDLE OF ROAD)
+           ========================================================================== */
+        function spawnSidewalkTree(x, z) {
+            const treeGroup = new THREE.Group();
+
+            const trunk = new THREE.Mesh(boxGeo, trunkMat);
+            trunk.scale.set(0.8, 6, 0.8);
+            trunk.position.y = 3;
+            treeGroup.add(trunk);
+
+            const leaf = new THREE.Mesh(boxGeo, leafMat);
+            leaf.scale.set(4, 5, 4);
+            leaf.position.y = 7;
+            treeGroup.add(leaf);
+
+            treeGroup.position.set(x, 0, z);
+            scene.add(treeGroup);
+        }
+
+        /* ==========================================================================
+           TRAFFIC CARS DENSITY ENGINE
+           ========================================================================== */
+        let trafficCars = [];
+
+        function spawnTrafficCar(x, z, dirX, dirZ) {
+            const colors = [0xffea00, 0x0066ff, 0xffffff, 0x00e676, 0xff5500];
+            const randomColor = colors[Math.floor(Math.random() * colors.length)];
+            const tCar = createNewSupercar(randomColor);
+
+            tCar.position.set(x, 0, z);
+            tCar.rotation.y = Math.atan2(dirX, dirZ);
+            tCar.dirX = dirX;
+            tCar.dirZ = dirZ;
+            tCar.speed = 0.14;
+
+            scene.add(tCar);
+            trafficCars.push(tCar);
+        }
+
+        /* ==========================================================================
+           CITY GRID & DOTTED WHITE CENTER LINES DOWN MIDDLE OF ROADS
+           ========================================================================== */
+        function buildCityGrid() {
+            // Ground Grass
+            const ground = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1000).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0x388e3c }));
+            ground.position.y = -0.1;
+            scene.add(ground);
+
+            const roadMat = new THREE.MeshLambertMaterial({ color: 0x2c2c36 });
+
+            for (let pos = -300; pos <= 300; pos += 100) {
+                // North-South Road Asphalt (18 units wide)
+                const nsRoad = new THREE.Mesh(new THREE.PlaneGeometry(18, 800).rotateX(-Math.PI / 2), roadMat);
+                nsRoad.position.set(pos, 0, 0);
+                scene.add(nsRoad);
+
+                // East-West Road Asphalt (18 units wide)
+                const ewRoad = new THREE.Mesh(new THREE.PlaneGeometry(800, 18).rotateX(-Math.PI / 2), roadMat);
+                ewRoad.position.set(0, 0, pos);
+                scene.add(ewRoad);
+
+                // DOTTED WHITE CENTER LINES DOWN THE MIDDLE OF EVERY ROAD
+                for (let dashZ = -380; dashZ <= 380; dashZ += 10) {
+                    const dashNS = new THREE.Mesh(boxGeo, lineMat);
+                    dashNS.scale.set(0.4, 0.02, 4);
+                    dashNS.position.set(pos, 0.02, dashZ);
+                    scene.add(dashNS);
+
+                    const dashEW = new THREE.Mesh(boxGeo, lineMat);
+                    dashEW.scale.set(4, 0.02, 0.4);
+                    dashEW.position.set(dashZ, 0.02, pos);
+                    scene.add(dashEW);
+                }
+            }
+
+            const bColors = [0x0077cc, 0xff8800, 0x00aa66, 0xe0e0e0, 0xff4444, 0x8844ff];
+
+            // Fill Blocks: Buildings, Sidewalk Trees & Sidewalk Pedestrians
+            for (let bx = -200; bx <= 200; bx += 100) {
+                for (let bz = -200; bz <= 200; bz += 100) {
+                    if (bx === 0 && bz === 0) continue;
+
+                    let h1 = Math.floor(Math.random() * 15 + 16);
+                    let h2 = Math.floor(Math.random() * 20 + 18);
+
+                    // 3D Buildings with Doors & Windows
+                    spawnDetailedBuilding(bx - 25, bz - 25, 18, h1, 18, bColors[Math.floor(Math.random() * bColors.length)]);
+                    spawnDetailedBuilding(bx + 25, bz - 25, 18, h2, 18, bColors[Math.floor(Math.random() * bColors.length)]);
+
+                    // TREES STRICTLY ALONG SIDEWALKS (NEVER IN MIDDLE OF ROAD)
+                    spawnSidewalkTree(bx - 12, bz - 12);
+                    spawnSidewalkTree(bx + 12, bz - 12);
+                    spawnSidewalkTree(bx - 12, bz + 12);
+                    spawnSidewalkTree(bx + 12, bz + 12);
+
+                    // PEDESTRIANS STRICTLY ALONG SIDEWALKS
+                    createPedestrian(bx - 11, bz - 20);
+                    createPedestrian(bx + 11, bz + 20);
+
+                    // AI TRAFFIC CARS IN ROAD LANES
+                    spawnTrafficCar(bx - 4.5, bz, 0, 1);
+                    spawnTrafficCar(bx + 4.5, bz, 0, -1);
+                }
+            }
+        }
+
+        buildCityGrid();
+
+        /* ==========================================================================
+           360° FREE DRIVING ENGINE (STRICT 25 KM/H SPEED LIMIT CAP)
+           ========================================================================== */
+        let gameState = 'START';
+        let score = 0;
+        let carSpeed = 0;
+
+        let maxForwardSpeed = 0.38; // 25 KM/H Limit
+        let maxReverseSpeed = 0.18;
+        let accelPower = 0.012;
+        let decelPower = 0.01;
+        let turnSpeed = 0.035;
+        let cameraMode = 'CHASE';
+
+        const keys = { w: false, a: false, s: false, d: false };
+
+        const scoreTextEl = document.getElementById('scoreText');
+        const highScoreTextEl = document.getElementById('highScoreText');
+        const speedNumEl = document.getElementById('speedNum');
+
+        const startOverlay = document.getElementById('startOverlay');
+        const startBtn = document.getElementById('startBtn');
+
+        let highScore = parseInt(localStorage.getItem('detailed25_highscore')) || 0;
+        highScoreTextEl.textContent = String(highScore).padStart(6, '0');
+
+        function startGame() {
+            sound.init();
+            score = 0;
+            carSpeed = 0;
+            playerCar.position.set(0, 0, 0);
+            playerCar.rotation.set(0, 0, 0);
+
+            scoreTextEl.textContent = '000000';
+            speedNumEl.textContent = '0';
+
+            gameState = 'PLAYING';
+            startOverlay.classList.add('hidden');
+        }
+
+        /* ==========================================================================
+           MAIN RENDER & ANIMATION LOOP
+           ========================================================================== */
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (gameState === 'PLAYING') {
+                if (keys.w) {
+                    carSpeed = Math.min(maxForwardSpeed, carSpeed + accelPower);
+                } else if (keys.s) {
+                    carSpeed = Math.max(-maxReverseSpeed, carSpeed - accelPower);
+                } else {
+                    if (carSpeed > 0) carSpeed = Math.max(0, carSpeed - decelPower);
+                    if (carSpeed < 0) carSpeed = Math.min(0, carSpeed + decelPower);
+                }
+
+                if (Math.abs(carSpeed) > 0.03) {
+                    let dir = carSpeed > 0 ? 1 : -1;
+                    if (keys.a) playerCar.rotation.y += turnSpeed * dir;
+                    if (keys.d) playerCar.rotation.y -= turnSpeed * dir;
+                }
+
+                playerCar.position.x -= Math.sin(playerCar.rotation.y) * carSpeed;
+                playerCar.position.z -= Math.cos(playerCar.rotation.y) * carSpeed;
+
+                let speedKMH = Math.round((Math.abs(carSpeed) / maxForwardSpeed) * 25);
+                speedNumEl.textContent = speedKMH;
+
+                sound.updateEngineSound(Math.abs(carSpeed) / maxForwardSpeed, keys.w || keys.s);
+
+                score += Math.floor(speedKMH / 5);
+                scoreTextEl.textContent = String(score).padStart(6, '0');
+
+                if (score > highScore) {
+                    highScore = score;
+                    highScoreTextEl.textContent = String(highScore).padStart(6, '0');
+                    localStorage.setItem('detailed25_highscore', highScore);
+                }
+
+                // Animate Sidewalk Pedestrians
+                pedestrians.forEach(p => {
+                    p.position.z += p.vz;
+                    if (Math.abs(p.position.z % 100) > 35) p.vz *= -1;
+                });
+
+                // Animate AI Traffic Cars
+                trafficCars.forEach(tc => {
+                    tc.position.x += tc.dirX * tc.speed;
+                    tc.position.z += tc.dirZ * tc.speed;
+
+                    if (Math.abs(tc.position.x) > 300) tc.dirX *= -1;
+                    if (Math.abs(tc.position.z) > 300) tc.dirZ *= -1;
+                });
+
+                if (cameraMode === 'CHASE') {
+                    let camDist = 10;
+                    let camHeight = 4.5;
+                    let targetCamX = playerCar.position.x + Math.sin(playerCar.rotation.y) * camDist;
+                    let targetCamZ = playerCar.position.z + Math.cos(playerCar.rotation.y) * camDist;
+
+                    camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetCamX, 0.12);
+                    camera.position.y = THREE.MathUtils.lerp(camera.position.y, playerCar.position.y + camHeight, 0.12);
+                    camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetCamZ, 0.12);
+
+                    camera.lookAt(playerCar.position.x, playerCar.position.y + 1.2, playerCar.position.z);
+                } else {
+                    camera.position.x = playerCar.position.x - Math.sin(playerCar.rotation.y) * 0.2;
+                    camera.position.y = playerCar.position.y + 1.5;
+                    camera.position.z = playerCar.position.z - Math.cos(playerCar.rotation.y) * 0.2;
+
+                    let lookX = playerCar.position.x - Math.sin(playerCar.rotation.y) * 20;
+                    let lookZ = playerCar.position.z - Math.cos(playerCar.rotation.y) * 20;
+                    camera.lookAt(lookX, playerCar.position.y + 1.3, lookZ);
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        /* ==========================================================================
+           INPUT EVENT LISTENERS
+           ========================================================================== */
+        window.addEventListener('keydown', (e) => {
+            const k = e.key.toLowerCase();
+            if (k === 'w' || e.key === 'ArrowUp') keys.w = true;
+            if (k === 's' || e.key === 'ArrowDown') keys.s = true;
+            if (k === 'a' || e.key === 'ArrowLeft') keys.a = true;
+            if (k === 'd' || e.key === 'ArrowRight') keys.d = true;
+
+            if (k === 'h') sound.playHorn();
+            if (k === 'c') cameraMode = cameraMode === 'CHASE' ? 'COCKPIT' : 'CHASE';
+        });
+
+        window.addEventListener('keyup', (e) => {
+            const k = e.key.toLowerCase();
+            if (k === 'w' || e.key === 'ArrowUp') keys.w = false;
+            if (k === 's' || e.key === 'ArrowDown') keys.s = false;
+            if (k === 'a' || e.key === 'ArrowLeft') keys.a = false;
+            if (k === 'd' || e.key === 'ArrowRight') keys.d = false;
+        });
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        startBtn.addEventListener('click', startGame);
+
+        animate();
+    </script>
+</body>
+</html>
